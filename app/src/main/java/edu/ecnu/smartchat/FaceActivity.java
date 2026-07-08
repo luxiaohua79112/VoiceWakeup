@@ -55,9 +55,7 @@ import edu.ecnu.smartchat.base.MyLog;
 
 public class FaceActivity extends AppCompatActivity {
 
-    static {
-        System.loadLibrary("opencv_java3");
-    }
+
 
     /////////////////////////////////////////////////////////////////////////////
     //////////////////////////// Constant Definition ////////////////////////////
