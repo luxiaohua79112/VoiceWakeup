@@ -35,6 +35,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
@@ -100,7 +101,7 @@ public class FaceActivity extends AppCompatActivity {
         setContentView(R.layout.activity_face);
 
         Log.d(TAG, "<onCreate> ENTER");
-        MyLog.initialize(this);
+   //     MyLog.initialize(this);
         mActivity = this;
 
 
@@ -110,11 +111,28 @@ public class FaceActivity extends AppCompatActivity {
         mBtnRunStop = (Button)findViewById(R.id.btn_run_stop);
         mBtnRunStop.setOnClickListener(view -> onBtnRunStop(view) );
 
-        // 检查存储空间读取权限
-        int permissionCheck = ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.READ_EXTERNAL_STORAGE);
-        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, PERMISSIONS_REQUEST_READ_SD);
-        } else {
+        // 检查并申请所需权限：文件读取（READ_EXTERNAL_STORAGE）、麦克风（RECORD_AUDIO）
+        // 注：INTERNET 为普通权限，无需运行时申请
+        // 注：Android 11+ 中 WRITE_EXTERNAL_STORAGE 运行时权限已无效（Scoped Storage 强制），
+        //     如需写入共享存储，请使用 MANAGE_EXTERNAL_STORAGE 或 getExternalFilesDir()
+        String[] neededPermissions = {
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+                Manifest.permission.RECORD_AUDIO
+        };
+
+        ArrayList<String> requestList = new ArrayList<>();
+        for (String perm : neededPermissions) {
+            if (ContextCompat.checkSelfPermission(getApplicationContext(), perm)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestList.add(perm);
+            }
+        }
+
+        if (!requestList.isEmpty()) {
+            ActivityCompat.requestPermissions(this,
+                    requestList.toArray(new String[0]), PERMISSIONS_REQUEST_READ_SD);
         }
 
 
@@ -136,6 +154,7 @@ public class FaceActivity extends AppCompatActivity {
             }
         };
 
+/*
         XXPermissions.with(mActivity)
                 .permission("android.permission.WRITE_EXTERNAL_STORAGE"
                         , "android.permission.READ_EXTERNAL_STORAGE"
@@ -166,6 +185,8 @@ public class FaceActivity extends AppCompatActivity {
                     }
                 });
 
+*/
+
         Log.d(TAG, "<onCreate> EXIT");
     }
 
@@ -175,11 +196,38 @@ public class FaceActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
         if (requestCode == PERMISSIONS_REQUEST_READ_SD) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            boolean readStorageGranted = false;
+            boolean recordAudioGranted = false;
 
-            } else {
-                finish();
+            for (int i = 0; i < permissions.length; i++) {
+                String perm = permissions[i];
+                int result = grantResults[i];
+                MyLog.d(TAG, "<onRequestPermissionsResult> " + perm + " result=" + result);
+
+                if (Manifest.permission.READ_EXTERNAL_STORAGE.equals(perm)) {
+                    readStorageGranted = (result == PackageManager.PERMISSION_GRANTED);
+                } else if (Manifest.permission.RECORD_AUDIO.equals(perm)) {
+                    recordAudioGranted = (result == PackageManager.PERMISSION_GRANTED);
+                }
             }
+
+            MyLog.d(TAG, "<onRequestPermissionsResult> readStorageGranted=" + readStorageGranted
+                    + ", recordAudioGranted=" + recordAudioGranted);
+
+            if (!recordAudioGranted) {
+                popupMessage("缺少录音权限，语音功能将无法使用");
+            }
+            if (!readStorageGranted) {
+                popupMessage("缺少文件读取权限，无法读取外部文件");
+            }
+
+            teamRecognizer = new TeamRecognizer();
+            teamRecognizer.initialize(mActivity.getApplicationContext(), new TeamRecognizer.IInitCallback() {
+                @Override
+                public void onRecognizerInitDone(int errCode) {
+                    MyLog.d(TAG, "<initGame.onRecognizerInitDone> errCode=" + errCode);
+                }
+            });
         }
 
     }
