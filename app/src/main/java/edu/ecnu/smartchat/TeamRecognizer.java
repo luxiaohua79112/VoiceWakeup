@@ -275,6 +275,31 @@ public class TeamRecognizer {
         MyLog.d(TAG, "<release> done");
     }
 
+    public boolean prepareWakeup(final List<WakeupWord> wakeupWords) {
+         keyword2File(wakeupWords);
+
+        // 加载唤醒词个性化数据
+        String keywordPath = RES_DIR + "/" + KEYWORD_FILE_NAME;
+        AiRequest.Builder customBuilder = AiRequest.builder();
+        customBuilder.customText("key_word", keywordPath, 0);
+        int ret = AiHelper.getInst().loadData(ABILITY_IVW, customBuilder.build());
+        if (ret != 0) {
+            MyLog.d(TAG, "<prepareWakeup> loadData failed, ret=" + ret + ", keywordPath=" + keywordPath);
+            return false;
+        }
+        MyLog.d(TAG, "<prepareWakeup> loadData success");
+
+        // 指定使用的个性化数据集合
+        int[] indexs = {0};
+        ret = AiHelper.getInst().specifyDataSet(ABILITY_IVW, "key_word", indexs);
+        if (ret != 0) {
+            MyLog.d(TAG, "<prepareWakeup> specifyDataSet failed, ret=" + ret);
+            return false;
+        }
+        MyLog.d(TAG, "<prepareWakeup> specifyDataSet success");
+        return true;
+    }
+
     /**
      * @brief 开始识别：注册能力监听、加载唤醒词、创建会话、启动录音
      * <p>
@@ -412,6 +437,7 @@ public class TeamRecognizer {
             return;
         }
         MyLog.d(TAG, "<handleStart> specifyDataSet success");
+
 
         // 创建会话
         AiRequest.Builder paramBuilder = AiRequest.builder();

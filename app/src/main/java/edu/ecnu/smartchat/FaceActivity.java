@@ -352,6 +352,10 @@ public class FaceActivity extends AppCompatActivity {
      */
     void onBtnRunStop(View view) {
 
+        String leftTeam = "法国";
+        String rightTeam = "西班牙";
+        List<TeamRecognizer.WakeupWord> wakeupWords = generateWakeupWords(leftTeam, rightTeam);
+        teamRecognizer.prepareWakeup(wakeupWords);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////
