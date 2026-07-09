@@ -32,11 +32,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.RandomAccessFile;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.ecnu.smartchat.base.MyLog;
@@ -131,11 +127,6 @@ public class TeamRecognizer {
     private AtomicBoolean mIsRecognizing = new AtomicBoolean(false);  // 是否正在识别中
     private Handler mRecordHandler;
     private String mPendingWakeupWords;
-
-    // WAV 文件录制相关
-    private RandomAccessFile mWavFile;
-    private String mWavFilePath;
-    private long mWavDataSize;
 
 
     /**
@@ -345,19 +336,6 @@ public class TeamRecognizer {
         }
         mRecordHandler = null;
 
-        // 兜底：关闭 WAV 文件（正常情况已在 handleWrite END 时关闭）
-        if (mWavFile != null) {
-            try {
-                writeWavHeader(mWavFile, mWavDataSize);
-                mWavFile.close();
-                MyLog.d(TAG, "<recognizeStop> WAV file finalized (fallback): " + mWavFilePath);
-            } catch (IOException e) {
-                MyLog.d(TAG, "<recognizeStop> WAV finalize error: " + e.getMessage());
-            }
-            mWavFile = null;
-            mWavFilePath = null;
-        }
-
         // 兜底：确保会话已结束
         if (mAiHandle != null && mAiHandle.isSuccess()) {
             int ret = AiHelper.getInst().end(mAiHandle);
@@ -455,22 +433,7 @@ public class TeamRecognizer {
             mIsRecognizing.set(false);
             return;
         }
-        mAudioRecord.startRecording();
         MyLog.d(TAG, "<handleStart> audio recording started");
-
-        // 创建 WAV 文件用于保存麦克风数据
-        try {
-            String timeStr = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-            mWavFilePath = "/sdcard/" + timeStr + ".wav";
-            mWavFile = new RandomAccessFile(mWavFilePath, "rw");
-            mWavFile.seek(44); // 跳过 WAV 头，录制结束后再填写
-            mWavDataSize = 0;
-            MyLog.d(TAG, "<handleStart> WAV file created: " + mWavFilePath);
-        } catch (IOException e) {
-            MyLog.d(TAG, "<handleStart> failed to create WAV file: " + e.getMessage());
-            mWavFile = null;
-            mWavFilePath = null;
-        }
 
         // 发送第一帧（BEGIN）
         android.os.Message msg = new android.os.Message();
@@ -509,15 +472,6 @@ public class TeamRecognizer {
         }
 
         if (AudioRecord.ERROR_INVALID_OPERATION != read && read > 0) {
-            // 将音频数据写入 WAV 文件
-            if (mWavFile != null) {
-                try {
-                    mWavFile.write(data, 0, read);
-                    mWavDataSize += read;
-                } catch (IOException e) {
-                    MyLog.d(TAG, "<handleWrite> WAV write error: " + e.getMessage());
-                }
-            }
             writeAudioData(data, status);
         }
 
@@ -528,19 +482,6 @@ public class TeamRecognizer {
             msg.obj = AiStatus.CONTINUE;
             mRecordHandler.sendMessage(msg);
         } else {
-            // 完成 WAV 文件头写入并关闭
-            if (mWavFile != null) {
-                try {
-                    writeWavHeader(mWavFile, mWavDataSize);
-                    mWavFile.close();
-                    MyLog.d(TAG, "<handleWrite> WAV file finalized: " + mWavFilePath + ", size=" + mWavDataSize);
-                } catch (IOException e) {
-                    MyLog.d(TAG, "<handleWrite> WAV finalize error: " + e.getMessage());
-                }
-                mWavFile = null;
-                mWavFilePath = null;
-            }
-
             // 停止录音
             try {
                 mAudioRecord.stop();
@@ -629,51 +570,5 @@ public class TeamRecognizer {
 
         MyLog.d(TAG, "<keyword2File> write to file success");
         return true;
-    }
-
-    /**
-     * @brief 写入 WAV 文件头（44字节，小端序）
-     * @param file     已打开的 RandomAccessFile
-     * @param dataSize PCM 数据总字节数
-     */
-    private void writeWavHeader(RandomAccessFile file, long dataSize) throws IOException {
-        file.seek(0);
-
-        int sampleRate = 16000;
-        int channels = 1;
-        int bitsPerSample = 16;
-        int byteRate = sampleRate * channels * bitsPerSample / 8;   // 32000
-        int blockAlign = channels * bitsPerSample / 8;               // 2
-        int totalDataSize = (int) dataSize;
-
-        file.write("RIFF".getBytes());
-        writeLittleEndianInt(file, totalDataSize + 36);
-        file.write("WAVE".getBytes());
-
-        // fmt chunk
-        file.write("fmt ".getBytes());
-        writeLittleEndianInt(file, 16);              // chunkSize
-        writeLittleEndianShort(file, (short) 1);     // audioFormat = PCM
-        writeLittleEndianShort(file, (short) channels);
-        writeLittleEndianInt(file, sampleRate);
-        writeLittleEndianInt(file, byteRate);
-        writeLittleEndianShort(file, (short) blockAlign);
-        writeLittleEndianShort(file, (short) bitsPerSample);
-
-        // data chunk
-        file.write("data".getBytes());
-        writeLittleEndianInt(file, totalDataSize);
-    }
-
-    private static void writeLittleEndianInt(RandomAccessFile file, int value) throws IOException {
-        file.write(value & 0xFF);
-        file.write((value >> 8) & 0xFF);
-        file.write((value >> 16) & 0xFF);
-        file.write((value >> 24) & 0xFF);
-    }
-
-    private static void writeLittleEndianShort(RandomAccessFile file, short value) throws IOException {
-        file.write(value & 0xFF);
-        file.write((value >> 8) & 0xFF);
     }
 }
