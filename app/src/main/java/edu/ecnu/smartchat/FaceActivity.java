@@ -221,13 +221,6 @@ public class FaceActivity extends AppCompatActivity {
                 popupMessage("缺少文件读取权限，无法读取外部文件");
             }
 
-            teamRecognizer = new TeamRecognizer();
-            teamRecognizer.initialize(mActivity.getApplicationContext(), new TeamRecognizer.IInitCallback() {
-                @Override
-                public void onRecognizerInitDone(int errCode) {
-                    MyLog.d(TAG, "<initGame.onRecognizerInitDone> errCode=" + errCode);
-                }
-            });
         }
 
     }
@@ -287,19 +280,19 @@ public class FaceActivity extends AppCompatActivity {
         wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
         text = leftTeam + "队";
         wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
-   //     text = "支持" + leftTeam + "队";
-   //     wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
-   //     text = "我爱" + leftTeam + "队";
-   //     wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+        text = "支持" + leftTeam + "队";
+        wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+        text = "我爱" + leftTeam + "队";
+        wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
 
         text = rightTeam;
         wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
         text = rightTeam + "队";
         wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
-   //     text = "支持" + rightTeam + "队";
-   //     wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
-   //     text = "我爱" + rightTeam + "队";
-   //     wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+        text = "支持" + rightTeam + "队";
+        wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+        text = "我爱" + rightTeam + "队";
+        wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
 
         return wakeupWords;
     }
@@ -310,6 +303,34 @@ public class FaceActivity extends AppCompatActivity {
      * @brief 创建或销毁
      */
     void onBtnCreateDestroy(View view) {
+        if (teamRecognizer == null) {
+            teamRecognizer = new TeamRecognizer();
+            teamRecognizer.initialize(mActivity.getApplicationContext(), new TeamRecognizer.IInitCallback() {
+                @Override
+                public void onRecognizerInitDone(int errCode) {
+                    MyLog.d(TAG, "<initGame.onRecognizerInitDone> errCode=" + errCode);
+                }
+            });
+
+            popupMessage("Start creating engine...");
+
+
+        } else {
+            teamRecognizer.release();
+            teamRecognizer = null;
+
+            popupMessage("Engine released!");
+        }
+
+    }
+
+
+
+    /**
+     * @brief 运行或者停止
+     */
+    void onBtnRunStop(View view) {
+
         if (!bRecognizing) {
 
             Log.d(TAG, "<onBtnCreateDestroy> recognizing start......");
@@ -341,21 +362,6 @@ public class FaceActivity extends AppCompatActivity {
             Log.d(TAG, "<onBtnCreateDestroy> recognize stopped!");
             popupMessage("Recognize stopped!");
         }
-
-
-    }
-
-
-
-    /**
-     * @brief 运行或者停止
-     */
-    void onBtnRunStop(View view) {
-
-        String leftTeam = "法国";
-        String rightTeam = "西班牙";
-        List<TeamRecognizer.WakeupWord> wakeupWords = generateWakeupWords(leftTeam, rightTeam);
-        teamRecognizer.prepareWakeup(wakeupWords);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////
