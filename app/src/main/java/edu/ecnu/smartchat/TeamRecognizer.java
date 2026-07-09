@@ -24,15 +24,13 @@ import com.iflytek.aikit.core.CoreListener;
 import com.iflytek.aikit.core.ErrType;
 import com.iflytek.aikit.core.LogLvl;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.ecnu.smartchat.base.MyLog;
@@ -67,6 +65,20 @@ public class TeamRecognizer {
          * @param outputData 识别到的信息
          */
         void onRecognizeResult(List<AiResponse> outputData);
+    }
+
+
+    /**
+     * @brief 唤醒词信息
+     */
+    public static class WakeupWord {
+        public String text = "";
+        public int threshold = 400;
+
+        public WakeupWord(String text, int threshold) {
+            this.text = text;
+            this.threshold = threshold;
+        }
     }
 
 
@@ -126,7 +138,7 @@ public class TeamRecognizer {
     private int mFrameCount = 0;  // 诊断用：帧计数
     private AtomicBoolean mIsRecognizing = new AtomicBoolean(false);  // 是否正在识别中
     private Handler mRecordHandler;
-    private String mPendingWakeupWords;
+    private List<WakeupWord> mPendingWakeupWords;
 
 
     /**
@@ -270,10 +282,10 @@ public class TeamRecognizer {
      * SDK 的 AiListener 回调依赖调用 write() 线程的 Looper 来分发，
      * 如果线程没有 Looper，onResult/onEvent/onError 回调将无法触发。
      *
-     * @param wakeupWords      唤醒词组合，以逗号分隔，例如 "法国球队,西班牙球队,摩洛哥球队"
+     * @param wakeupWords      唤醒词列表
      * @param recognizeCallback 识别结果回调
      */
-    public void recognizeStart(final String wakeupWords, final IRecognizeCallback recognizeCallback) {
+    public void recognizeStart(final List<WakeupWord> wakeupWords, final IRecognizeCallback recognizeCallback) {
         if (mIsRecognizing.get()) {
             MyLog.d(TAG, "<recognizeStart> already recognizing, skip");
             return;
@@ -433,6 +445,7 @@ public class TeamRecognizer {
             mIsRecognizing.set(false);
             return;
         }
+        mAudioRecord.startRecording();
         MyLog.d(TAG, "<handleStart> audio recording started");
 
         // 发送第一帧（BEGIN）
@@ -531,10 +544,10 @@ public class TeamRecognizer {
 
     /**
      * @brief 将唤醒词写入相应的文件中
-     * @param wakeupWords: 唤醒词列表，以逗号分隔，例如 "法国球队,西班牙球队,摩洛哥球队"
+     * @param wordList: 唤醒词列表，
      * @return false: 写入失败，true: 写入成功
      */
-    private boolean keyword2File(final String wakeupWords) {
+    private boolean keyword2File(final List<WakeupWord> wordList) {
         try {
             File keywordFile = new File(RES_DIR + "/keyword.txt");
             if (keywordFile.exists()) {
@@ -545,22 +558,20 @@ public class TeamRecognizer {
             if (binFile.exists()) {
                 binFile.delete();
             }
-            String temp = wakeupWords;
-            if (temp.isEmpty()) {
-                temp = "任意球队";
-            }
-            String str = temp.replace("，", ",");
-            String[] keywords = str.split(",");
             if (!keywordFile.exists()) {
                 keywordFile.createNewFile();
             }
+
             OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(keywordFile),
                     "UTF-8");
             BufferedWriter bufferedWriter = new BufferedWriter(writer);
-            for (int i = 0; i < keywords.length; i++) {
-                bufferedWriter.write(keywords[i]);
-                bufferedWriter.write(";");
+            for (int i = 0; i < wordList.size(); i++) {
+                WakeupWord wakeupWord = wordList.get(i);
+                String textContent = String.format(Locale.ENGLISH, "%s;nCM:%d;",
+                        wakeupWord.text, wakeupWord.threshold);
+                bufferedWriter.write(textContent);
                 bufferedWriter.newLine();//写入换行
+                MyLog.d(TAG, "<keyword2File> write line: textContent=" + textContent);
             }
             bufferedWriter.close();
         } catch (IOException e) {

@@ -277,6 +277,33 @@ public class FaceActivity extends AppCompatActivity {
     }
 
 
+
+    int mVoiceThreshold = 500;
+    private List<TeamRecognizer.WakeupWord> generateWakeupWords(String leftTeam, String rightTeam) {
+        String text;
+        ArrayList<TeamRecognizer.WakeupWord> wakeupWords = new ArrayList<>();
+
+        text = leftTeam;
+        wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+        text = leftTeam + "队";
+        wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+   //     text = "支持" + leftTeam + "队";
+   //     wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+   //     text = "我爱" + leftTeam + "队";
+   //     wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+
+        text = rightTeam;
+        wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+        text = rightTeam + "队";
+        wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+   //     text = "支持" + rightTeam + "队";
+   //     wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+   //     text = "我爱" + rightTeam + "队";
+   //     wakeupWords.add(new TeamRecognizer.WakeupWord(text, mVoiceThreshold));
+
+        return wakeupWords;
+    }
+
     private boolean bRecognizing = false;
 
     /**
@@ -287,8 +314,11 @@ public class FaceActivity extends AppCompatActivity {
 
             Log.d(TAG, "<onBtnCreateDestroy> recognizing start......");
 
-            String wakeupWords = "法国队,西班牙队";
+            String leftTeam = "法国";
+            String rightTeam = "西班牙";
+            List<TeamRecognizer.WakeupWord> wakeupWords = generateWakeupWords(leftTeam, rightTeam);
             teamRecognizer.recognizeStart(wakeupWords, new TeamRecognizer.IRecognizeCallback() {
+
                 @Override
                 public void onRecognizeResult(List<AiResponse> outputData) {
                     MyLog.d(TAG, "<onRecognizeResult> " + outputData);
