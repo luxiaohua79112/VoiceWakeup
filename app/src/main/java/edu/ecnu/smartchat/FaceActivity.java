@@ -83,6 +83,7 @@ public class FaceActivity extends AppCompatActivity {
     /////////////////////////////////////////////////////////////////////////////
     private Button mBtnCreateDestroy = null;
     private Button mBtnRunStop = null;
+    private Button mBtnTest = null;
 
     private Handler mMsgHandler = null;
 
@@ -110,6 +111,9 @@ public class FaceActivity extends AppCompatActivity {
 
         mBtnRunStop = (Button)findViewById(R.id.btn_run_stop);
         mBtnRunStop.setOnClickListener(view -> onBtnRunStop(view) );
+
+        mBtnTest = (Button)findViewById(R.id.btn_test);
+        mBtnTest.setOnClickListener(view -> onBtnTest(view) );
 
         // 检查并申请所需权限：文件读取（READ_EXTERNAL_STORAGE）、麦克风（RECORD_AUDIO）
         // 注：INTERNET 为普通权限，无需运行时申请
@@ -335,11 +339,10 @@ public class FaceActivity extends AppCompatActivity {
 
             Log.d(TAG, "<onBtnCreateDestroy> recognizing start......");
 
-            String leftTeam = "法国";
-            String rightTeam = "西班牙";
+            String leftTeam = "西班牙";
+            String rightTeam = "英格兰";
             List<TeamRecognizer.WakeupWord> wakeupWords = generateWakeupWords(leftTeam, rightTeam);
             teamRecognizer.recognizeStart(wakeupWords, new TeamRecognizer.IRecognizeCallback() {
-
                 @Override
                 public void onRecognizeResult(List<AiResponse> outputData) {
                     MyLog.d(TAG, "<onRecognizeResult> " + outputData);
@@ -364,6 +367,83 @@ public class FaceActivity extends AppCompatActivity {
         }
     }
 
+    void onBtnTest(View view) {
+
+        if (teamRecognizer == null) {
+
+            recognizeCreate("西班牙", "英格兰");
+            popupMessage("开始识别....");
+
+        } else {
+            recognizeRelease();
+            popupMessage("识别已经停止!");
+        }
+
+
+    }
+
+
+
+    private boolean recognizeCreate(final String leftTeam, final String rightTeam) {
+
+        recognizeRelease();
+
+        teamRecognizer = new TeamRecognizer();
+        teamRecognizer.initialize(mActivity.getApplicationContext(), new TeamRecognizer.IInitCallback() {
+            @Override
+            public void onRecognizerInitDone(int errCode) {
+                MyLog.d(TAG, "<recognizeCreate.onRecognizerInitDone> errCode=" + errCode);
+                if (errCode != 0) {
+                    return;
+                }
+
+                mActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        recognizeStart(leftTeam, rightTeam);
+                    }
+                });
+            }
+        });
+
+        MyLog.d(TAG, "<recognizeCreate> done");
+        return true;
+    }
+
+    private void recognizeStart(String leftTeam, String rightTeam) {
+        if (teamRecognizer == null) {
+            MyLog.d(TAG, "<recognizeStart> bad state");
+            return;
+        }
+
+        List<TeamRecognizer.WakeupWord> wakeupWords = generateWakeupWords(leftTeam, rightTeam);
+        teamRecognizer.recognizeStart(wakeupWords, new TeamRecognizer.IRecognizeCallback() {
+            @Override
+            public void onRecognizeResult(List<AiResponse> outputData) {
+                MyLog.d(TAG, "<onRecognizeResult> outputData.size=" + outputData.size());
+
+                runOnUiThread(() -> {
+                    popupMessage("<onRecognizeResult> outputData=" + outputData);
+                });
+            }
+        });
+
+        MyLog.d(TAG, "<recognizeStart> done");
+    }
+
+
+    private void recognizeRelease() {
+        if (teamRecognizer != null) {
+            teamRecognizer.release();
+            teamRecognizer = null;
+            MyLog.d(TAG, "<recognizeRelease> done");
+        }
+    }
     ////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////// 解析特征值 ////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////
