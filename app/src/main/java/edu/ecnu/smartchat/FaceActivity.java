@@ -339,8 +339,8 @@ public class FaceActivity extends AppCompatActivity {
 
             Log.d(TAG, "<onBtnCreateDestroy> recognizing start......");
 
-            String leftTeam = "西班牙";
-            String rightTeam = "英格兰";
+            String leftTeam = "法国";
+            String rightTeam = "阿根廷";
             List<TeamRecognizer.WakeupWord> wakeupWords = generateWakeupWords(leftTeam, rightTeam);
             teamRecognizer.recognizeStart(wakeupWords, new TeamRecognizer.IRecognizeCallback() {
                 @Override
@@ -371,7 +371,7 @@ public class FaceActivity extends AppCompatActivity {
 
         if (teamRecognizer == null) {
 
-            recognizeCreate("西班牙", "英格兰");
+            recognizeCreate("法国", "阿根廷");
             popupMessage("开始识别....");
 
         } else {
@@ -401,7 +401,7 @@ public class FaceActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            Thread.sleep(500);
+                            Thread.sleep(100);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
@@ -427,9 +427,43 @@ public class FaceActivity extends AppCompatActivity {
             public void onRecognizeResult(List<AiResponse> outputData) {
                 MyLog.d(TAG, "<onRecognizeResult> outputData.size=" + outputData.size());
 
-                runOnUiThread(() -> {
-                    popupMessage("<onRecognizeResult> outputData=" + outputData);
-                });
+                ArrayList<RecognizeResultD> recognizedList = RecognizeResultD.parseList(outputData);
+                RecognizeResultD recognizeResultD = RecognizeResultD.findMaxNcm(recognizedList);
+                if (recognizeResultD == null) {  // 数据有问题
+                    MyLog.d(TAG, "<onRecognizeResult> NOT found max Ncm result");
+                    return;
+                }
+
+                WakeResultD wakeResultD = recognizeResultD.rlt.get(0);
+                if (wakeResultD.keyword == null) {
+                    MyLog.d(TAG, "<onRecognizeResult> keyword is NULL");
+                    return;
+                }
+
+                if (wakeResultD.keyword.contains(leftTeam)) {
+
+                    mActivity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            popupMessage("选择球队：" + leftTeam);
+                        }
+                    });
+
+
+                } else if (wakeResultD.keyword.contains(rightTeam)) {
+
+                    mActivity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            popupMessage("选择球队：" + rightTeam);
+                        }
+                    });
+
+                }
+
+             //   runOnUiThread(() -> {
+             //       popupMessage("<onRecognizeResult> outputData=" + outputData);
+             //   });
             }
         });
 
